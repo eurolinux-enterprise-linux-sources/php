@@ -18,7 +18,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: php
 Version: 5.3.3
-Release: 48%{?dist}
+Release: 49%{?dist}
 License: PHP
 Group: Development/Languages
 URL: http://www.php.net/
@@ -54,6 +54,7 @@ Patch23: php-5.3.3-pdo-53551.patch
 Patch24: php-5.3.3-fileinfo.patch
 Patch25: php-5.3.3-imap.patch
 Patch26: php-5.3.3-odbc.patch
+Patch27: php-5.3.3-bug53592.patch
 
 # Functional changes
 Patch40: php-5.0.4-dlopen.patch
@@ -523,6 +524,7 @@ support for using the enchant library to PHP.
 %patch24 -p1 -b .streams
 %patch25 -p1 -b .imapauth
 %patch26 -p1 -b .pdoodbc
+%patch27 -p1 -b .bug53592
 
 %patch40 -p1 -b .dlopen
 %patch41 -p1 -b .easter
@@ -1115,6 +1117,10 @@ fi
 
 
 %changelog
+* Mon Nov  7 2016 Remi Collet <rcollet@redhat.com> - 5.3.3-49
+- fix php-soap fails to connect to HTTPS web service sporadically
+  as stream_socket_enable_crypto() uses NONBLOCK #1283153
+
 * Mon Jul 25 2016 Remi Collet <rcollet@redhat.com> - 5.3.3-48
 - don't set environmental variable based on user supplied Proxy
   request header CVE-2016-5385
