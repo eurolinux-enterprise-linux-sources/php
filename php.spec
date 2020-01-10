@@ -18,7 +18,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: php
 Version: 5.3.3
-Release: 47%{?dist}
+Release: 48%{?dist}
 License: PHP
 Group: Development/Languages
 URL: http://www.php.net/
@@ -158,6 +158,7 @@ Patch269: php-5.3.3-CVE-2015-4026.patch
 Patch270: php-5.3.3-bug69353.patch
 Patch271: php-5.3.3-bug69152.patch
 Patch272: php-5.3.3-CVE-2015-4644.patch
+Patch273: php-5.3.3-CVE-2016-5385.patch
 
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -626,6 +627,7 @@ support for using the enchant library to PHP.
 %patch270 -p1 -b .bug69353
 %patch271 -p1 -b .bug69152
 %patch272 -p1 -b .cve4644
+%patch273 -p1 -b .cve5385
 
 # Prevent %%doc confusion over LICENSE files
 cp Zend/LICENSE Zend/ZEND_LICENSE
@@ -1113,6 +1115,10 @@ fi
 
 
 %changelog
+* Mon Jul 25 2016 Remi Collet <rcollet@redhat.com> - 5.3.3-48
+- don't set environmental variable based on user supplied Proxy
+  request header CVE-2016-5385
+
 * Wed Dec  9 2015 Remi Collet <rcollet@redhat.com> - 5.3.3-47
 - fix wrong warning in openssl_encrypt() for missing IV
   when IV is not required #1260315
