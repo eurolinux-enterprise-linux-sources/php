@@ -1,0 +1,107 @@
+From 92e5b10c41668b1ceb55030a76cb74d41dac82d3 Mon Sep 17 00:00:00 2001
+From: Dmitry Stogov <dmitry@php.net>
+Date: Fri, 15 Apr 2011 12:43:20 +0000
+Subject: [PATCH] Fixed bug #54268 (Double free when destroy_zend_class fails)
+
+---
+ Zend/tests/bug54268.phpt | 35 +++++++++++++++++++++++++++++++++++
+ Zend/zend_execute_API.c  |  2 ++
+ Zend/zend_hash.c         | 18 ++++++++----------
+ 3 files changed, 45 insertions(+), 10 deletions(-)
+ create mode 100644 Zend/tests/bug54268.phpt
+
+diff --git a/Zend/tests/bug54268.phpt b/Zend/tests/bug54268.phpt
+new file mode 100644
+index 0000000..b544cd8
+--- /dev/null
++++ b/Zend/tests/bug54268.phpt
+@@ -0,0 +1,35 @@
++--TEST--
++Bug #54268 (Double free when destroy_zend_class fails)
++--INI--
++memory_limit=8M
++--SKIPIF--
++<?php
++$zend_mm_enabled = getenv("USE_ZEND_ALLOC");
++if ($zend_mm_enabled === "0") {
++	die("skip Zend MM disabled");
++}
++?>
++--FILE--
++<?php
++class DestructableObject
++{
++        public function __destruct()
++        {
++                DestructableObject::__destruct();
++        }
++}
++class DestructorCreator
++{
++        public function __destruct()
++        {
++                $this->test = new DestructableObject;
++        }
++}
++class Test
++{
++        public static $mystatic;
++}
++$x = new Test();
++Test::$mystatic = new DestructorCreator();
++--EXPECTF--
++Fatal error: Allowed memory size of %s bytes exhausted%s(tried to allocate %s bytes) in %s on line %d
+diff --git a/Zend/zend_execute_API.c b/Zend/zend_execute_API.c
+index 0ad62a2..3717f43 100644
+--- a/Zend/zend_execute_API.c
++++ b/Zend/zend_execute_API.c
+@@ -296,7 +296,9 @@ void shutdown_executor(TSRMLS_D) /* {{{ */
+ 			zend_hash_reverse_apply(EG(function_table), (apply_func_t) zend_cleanup_function_data TSRMLS_CC);
+ 		}
+ 		zend_hash_apply(EG(class_table), (apply_func_t) zend_cleanup_class_data TSRMLS_CC);
++	} zend_end_try();
+ 
++	zend_try {
+ 		zend_vm_stack_destroy(TSRMLS_C);
+ 
+ 		zend_objects_store_free_object_storage(&EG(objects_store) TSRMLS_CC);
+diff --git a/Zend/zend_hash.c b/Zend/zend_hash.c
+index 204ac0c..be514ff 100644
+--- a/Zend/zend_hash.c
++++ b/Zend/zend_hash.c
+@@ -545,9 +545,15 @@ ZEND_API void zend_hash_clean(HashTable *ht)
+ 
+ 	IS_CONSISTENT(ht);
+ 
+-	SET_INCONSISTENT(HT_CLEANING);
+-
+ 	p = ht->pListHead;
++
++	memset(ht->arBuckets, 0, ht->nTableSize*sizeof(Bucket *));
++	ht->pListHead = NULL;
++	ht->pListTail = NULL;
++	ht->nNumOfElements = 0;
++	ht->nNextFreeElement = 0;
++	ht->pInternalPointer = NULL;
++
+ 	while (p != NULL) {
+ 		q = p;
+ 		p = p->pListNext;
+@@ -559,14 +565,6 @@ ZEND_API void zend_hash_clean(HashTable *ht)
+ 		}
+ 		pefree(q, ht->persistent);
+ 	}
+-	memset(ht->arBuckets, 0, ht->nTableSize*sizeof(Bucket *));
+-	ht->pListHead = NULL;
+-	ht->pListTail = NULL;
+-	ht->nNumOfElements = 0;
+-	ht->nNextFreeElement = 0;
+-	ht->pInternalPointer = NULL;
+-
+-	SET_INCONSISTENT(HT_OK);
+ }
+ 
+ /* This function is used by the various apply() functions.
+-- 
+1.7.11.5
+

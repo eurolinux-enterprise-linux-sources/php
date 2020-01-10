@@ -1,0 +1,92 @@
+From 7c1a9e37cabec0ae4369ad681e39e3924fab2b5b Mon Sep 17 00:00:00 2001
+From: Hannes Magnusson <bjori@php.net>
+Date: Mon, 14 Feb 2011 15:32:02 +0000
+Subject: [PATCH] Bug#54016 (finfo_file() Cannot determine filetype in
+ archives)
+
+---
+ ext/fileinfo/fileinfo.c                       |   22 ++++++++------------
+ ext/fileinfo/tests/finfo_file_001.phpt        |    2 +-
+ ext/fileinfo/tests/finfo_file_002.phpt        |    4 ++-
+ ext/fileinfo/tests/finfo_file_stream_001.phpt |   26 +++++++++++++++++++++++++
+ ext/fileinfo/tests/mime_content_type_001.phpt |    2 +-
+ ext/fileinfo/tests/resources/dir.zip          |  Bin 0 -> 392 bytes
+ 6 files changed, 40 insertions(+), 16 deletions(-)
+ create mode 100644 ext/fileinfo/tests/finfo_file_stream_001.phpt
+ create mode 100644 ext/fileinfo/tests/resources/dir.zip
+
+diff --git a/ext/fileinfo/fileinfo.c b/ext/fileinfo/fileinfo.c
+index b269726..398659b 100644
+--- a/ext/fileinfo/fileinfo.c
++++ b/ext/fileinfo/fileinfo.c
+@@ -478,7 +478,7 @@ static void _php_finfo_get_type(INTERNAL_FUNCTION_PARAMETERS, int mode, int mime
+ 			/* determine if the file is a local file or remote URL */
+ 			char *tmp2;
+ 			php_stream_wrapper *wrap;
+-			struct stat sb;
++			php_stream_statbuf ssb;
+ 
+ 			if (buffer == NULL || !*buffer) {
+ 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Empty filename or path");
+@@ -486,17 +486,6 @@ static void _php_finfo_get_type(INTERNAL_FUNCTION_PARAMETERS, int mode, int mime
+ 				goto clean;
+ 			}
+ 
+-			if (php_sys_stat(buffer, &sb) == 0) {
+-					  if (sb.st_mode & _S_IFDIR) {
+-								 ret_val = mime_directory;
+-								 goto common;
+-					  }
+-			} else {
+-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "File or path not found '%s'", buffer);
+-				RETVAL_FALSE;
+-				goto clean;
+-			}
+-
+ 			wrap = php_stream_locate_url_wrapper(buffer, &tmp2, 0 TSRMLS_CC);
+ 
+ 			if (wrap) {
+@@ -512,7 +501,14 @@ static void _php_finfo_get_type(INTERNAL_FUNCTION_PARAMETERS, int mode, int mime
+ 					goto clean;
+ 				}
+ 
+-				ret_val = (char *)magic_stream(magic, stream);
++				if (php_stream_stat(stream, &ssb) == SUCCESS) {
++					if (ssb.sb.st_mode & S_IFDIR) {
++						ret_val = mime_directory;
++					} else {
++						ret_val = (char *)magic_stream(magic, stream);
++					}
++				}
++
+ 				php_stream_close(stream);
+ 			}
+ 			break;
+diff --git a/ext/fileinfo/tests/finfo_file_001.phpt b/ext/fileinfo/tests/finfo_file_001.phpt
+index 7452b52..2632303 100644
+--- a/ext/fileinfo/tests/finfo_file_001.phpt
++++ b/ext/fileinfo/tests/finfo_file_001.phpt
+@@ -24,5 +24,5 @@ Warning: finfo_file(): Empty filename or path in %s on line %d
+ bool(false)
+ string(9) "directory"
+ 
+-Warning: finfo_file(): File or path not found '&' in %s on line %d
++Warning: finfo_file(&): failed to open stream: No such file or directory in %s on line %d
+ bool(false)
+diff --git a/ext/fileinfo/tests/mime_content_type_001.phpt b/ext/fileinfo/tests/mime_content_type_001.phpt
+index 5adab8f..72dd201 100644
+--- a/ext/fileinfo/tests/mime_content_type_001.phpt
++++ b/ext/fileinfo/tests/mime_content_type_001.phpt
+@@ -23,7 +23,7 @@ Warning: mime_content_type(): Can only process string or stream arguments in %s
+ 
+ Warning: mime_content_type(): Can only process string or stream arguments in %s on line %d
+ 
+-Warning: mime_content_type(): File or path not found 'foo/inexistent' in %s on line %d
++Warning: mime_content_type(foo/inexistent): failed to open stream: No such file or directory in %s on line %d
+ 
+ Warning: mime_content_type(): Empty filename or path in %s on line %d
+ 
+
+-- 
+1.7.8
+

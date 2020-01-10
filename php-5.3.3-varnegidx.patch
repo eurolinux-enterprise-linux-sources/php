@@ -1,0 +1,16 @@
+
+http://svn.php.net/viewvc?view=revision&revision=301863
+
+https://bugzilla.redhat.com/show_bug.cgi?id=700724
+
+--- php-5.3.3/ext/standard/var.c.varnegidx
++++ php-5.3.3/ext/standard/var.c
+@@ -353,7 +353,7 @@ static int php_array_element_export(zval
+ 
+ 	if (hash_key->nKeyLength == 0) { /* numeric key */
+ 		buffer_append_spaces(buf, level+1);
+-		smart_str_append_long(buf, hash_key->h);
++		smart_str_append_long(buf, (long) hash_key->h);
+ 		smart_str_appendl(buf, " => ", 4);
+ 	} else { /* string key */
+ 		char *key, *tmp_str;

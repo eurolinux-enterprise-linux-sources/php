@@ -1,0 +1,97 @@
+diff -up ext/mysqli/mysqli_api.c.66762 ext/mysqli/mysqli_api.c
+--- ext/mysqli/mysqli_api.c.66762	2014-02-24 15:41:05.196075486 +0100
++++ ext/mysqli/mysqli_api.c	2014-02-25 08:37:51.727541870 +0100
+@@ -1816,6 +1816,10 @@ PHP_FUNCTION(mysqli_prepare)
+ 		efree(stmt);
+ 		RETURN_FALSE;
+ 	}
++#ifndef MYSQLI_USE_MYSQLND
++	stmt->link_handle = Z_OBJ_HANDLE(*mysql_link);
++	zend_objects_store_add_ref_by_handle(stmt->link_handle TSRMLS_CC);
++#endif
+ 
+ 	mysqli_resource = (MYSQLI_RESOURCE *)ecalloc (1, sizeof(MYSQLI_RESOURCE));
+ 	mysqli_resource->ptr = (void *)stmt;
+@@ -2328,6 +2332,10 @@ PHP_FUNCTION(mysqli_stmt_init)
+ 		efree(stmt);
+ 		RETURN_FALSE;
+ 	}
++#ifndef MYSQLI_USE_MYSQLND
++	stmt->link_handle = Z_OBJ_HANDLE(*mysql_link);
++	zend_objects_store_add_ref_by_handle(stmt->link_handle TSRMLS_CC);
++#endif
+ 
+ 	mysqli_resource = (MYSQLI_RESOURCE *)ecalloc (1, sizeof(MYSQLI_RESOURCE));
+ 	mysqli_resource->status = MYSQLI_STATUS_INITIALIZED;
+diff -up ext/mysqli/mysqli.c.66762 ext/mysqli/mysqli.c
+--- ext/mysqli/mysqli.c.66762	2010-05-26 09:28:43.000000000 +0200
++++ ext/mysqli/mysqli.c	2014-02-25 08:38:23.559718060 +0100
+@@ -173,8 +173,11 @@ void php_clear_stmt_bind(MY_STMT *stmt T
+ 	php_free_stmt_bind_buffer(stmt->param, FETCH_SIMPLE);
+ 	/* Clean output bind */
+ 	php_free_stmt_bind_buffer(stmt->result, FETCH_RESULT);
+-#endif
+ 
++	if (stmt->link_handle) {
++	    zend_objects_store_del_ref_by_handle(stmt->link_handle TSRMLS_CC);
++	}
++#endif
+ 	if (stmt->query) {
+ 		efree(stmt->query);
+ 	}
+@@ -1009,6 +1012,10 @@ PHP_FUNCTION(mysqli_stmt_construct)
+ 		efree(stmt);
+ 		RETURN_FALSE;
+ 	}
++#ifndef MYSQLI_USE_MYSQLND
++	stmt->link_handle = Z_OBJ_HANDLE(*mysql_link);
++	zend_objects_store_add_ref_by_handle(stmt->link_handle TSRMLS_CC);
++#endif
+ 
+ 	mysqli_resource = (MYSQLI_RESOURCE *)ecalloc (1, sizeof(MYSQLI_RESOURCE));
+ 	mysqli_resource->ptr = (void *)stmt;
+diff -up ext/mysqli/php_mysqli_structs.h.66762 ext/mysqli/php_mysqli_structs.h
+--- ext/mysqli/php_mysqli_structs.h.66762	2010-06-14 20:19:13.000000000 +0200
++++ ext/mysqli/php_mysqli_structs.h	2014-02-25 08:35:01.111583543 +0100
+@@ -127,6 +127,10 @@ typedef struct {
+ 	BIND_BUFFER	param;
+ 	BIND_BUFFER	result;
+ 	char		*query;
++#ifndef MYSQLI_USE_MYSQLND
++	/* used to manage refcount with libmysql (already implement in mysqlnd) */
++	zend_object_handle link_handle;
++#endif
+ } MY_STMT;
+ 
+ typedef struct {
+diff -up ext/mysqli/tests/bug66762.phpt.66762 ext/mysqli/tests/bug66762.phpt
+--- ext/mysqli/tests/bug66762.phpt.66762	2014-02-25 08:35:01.111583543 +0100
++++ ext/mysqli/tests/bug66762.phpt	2014-02-25 08:35:01.111583543 +0100
+@@ -0,0 +1,26 @@
++--TEST--
++Bug #66762 	mysqli@libmysql segfault in mysqli_stmt::bind_result() when link closed
++--SKIPIF--
++<?php
++require_once('skipif.inc');
++require_once('skipifconnectfailure.inc');
++?>
++--FILE--
++<?php
++	require_once("connect.inc");
++
++	$mysqli = new mysqli($host, $user, $passwd, $db);
++
++	$read_stmt = $mysqli->prepare("SELECT 1");
++
++	var_dump($read_stmt->bind_result($data));
++
++	unset($mysqli);
++	var_dump($read_stmt->bind_result($data));
++	
++?>
++done!
++--EXPECT--
++bool(true)
++bool(true)
++done!
+\ Pas de fin de ligne à la fin du fichier

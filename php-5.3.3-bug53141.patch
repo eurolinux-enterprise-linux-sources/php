@@ -1,0 +1,86 @@
+From 7ded7577b21e9ff4443b48c24ac0f0d543424676 Mon Sep 17 00:00:00 2001
+From: Felipe Pena <felipe@php.net>
+Date: Tue, 2 Nov 2010 18:34:56 +0000
+Subject: [PATCH] - Fixed bug #53141 (autoload misbehaves if called from
+ closing session)   patch by: ladislav at marek dot su
+
+---
+ NEWS                            |  2 ++
+ ext/session/session.c           |  1 +
+ ext/session/tests/bug53141.phpt | 26 ++++++++++++++++++++++++++
+ 3 files changed, 29 insertions(+)
+ create mode 100644 ext/session/tests/bug53141.phpt
+
+diff --git a/ext/session/session.c b/ext/session/session.c
+index 52bd177..dba1e2c 100644
+--- a/ext/session/session.c
++++ b/ext/session/session.c
+@@ -2282,6 +2282,7 @@ static PHP_MINFO_FUNCTION(session) /* {{{ */
+ 
+ static const zend_module_dep session_deps[] = { /* {{{ */
+ 	ZEND_MOD_OPTIONAL("hash")
++	ZEND_MOD_REQUIRED("spl")
+ 	{NULL, NULL, NULL}
+ };
+ /* }}} */
+diff --git a/ext/session/tests/bug53141.phpt b/ext/session/tests/bug53141.phpt
+new file mode 100644
+index 0000000..765d272
+--- /dev/null
++++ b/ext/session/tests/bug53141.phpt
+@@ -0,0 +1,26 @@
++--TEST--
++Bug #53141 (autoload misbehaves if called from closing session)
++--SKIPIF--
++<?php include('skipif.inc'); ?>
++--FILE--
++<?php
++spl_autoload_register(function ($class) {
++    var_dump("Loading $class");
++    eval('class Bar {}');
++});
++
++class Foo
++{
++    function __sleep()
++    {
++        new Bar;
++        return array();
++    }
++}
++
++session_start();
++$_SESSION['foo'] = new Foo;
++
++?>
++--EXPECT--
++string(11) "Loading Bar"
+\ No newline at end of file
+-- 
+1.9.2
+
+From 7b4cbadfce17213eee0500eef9e50aefac3f4a92 Mon Sep 17 00:00:00 2001
+From: Felipe Pena <felipe@php.net>
+Date: Tue, 2 Nov 2010 20:51:02 +0000
+Subject: [PATCH] - Fixed config.m4 to complete the fix for bug #53141 (thanks
+ Johannes)
+
+---
+ ext/session/config.m4 | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ext/session/config.m4 b/ext/session/config.m4
+index f9222f0..d65e872 100644
+--- a/ext/session/config.m4
++++ b/ext/session/config.m4
+@@ -13,6 +13,7 @@ if test "$PHP_SESSION" != "no"; then
+   PHP_PREAD_TEST
+   PHP_NEW_EXTENSION(session, session.c mod_files.c mod_mm.c mod_user.c, $ext_shared)
+   PHP_ADD_EXTENSION_DEP(session, hash, true)
++  PHP_ADD_EXTENSION_DEP(session, spl)
+   PHP_SUBST(SESSION_SHARED_LIBADD)
+   PHP_INSTALL_HEADERS(ext/session, [php_session.h mod_files.h mod_user.h])
+   AC_DEFINE(HAVE_PHP_SESSION,1,[ ])
+-- 
+1.9.2
+

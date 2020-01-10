@@ -1,0 +1,44 @@
+From 09607226d4d418421119736f8137189efc4602ff Mon Sep 17 00:00:00 2001
+From: Derick Rethans <derick@php.net>
+Date: Fri, 24 Jun 2011 11:19:34 +0000
+Subject: [PATCH] - Added a new PHPAPI function to return module_initialized:  
+ php_get_module_initialized().
+
+---
+ main/main.c | 7 +++++++
+ main/php.h  | 1 +
+ 2 files changed, 8 insertions(+)
+
+diff --git a/main/main.c b/main/main.c
+index e528533..f027201 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -551,6 +551,13 @@ static int php_during_module_shutdown(void)
+ }
+ /* }}} */
+ 
++/* {{{ php_get_module_initialized
++ */
++PHPAPI int php_get_module_initialized(void)
++{
++	return module_initialized;
++}
++
+ /* {{{ php_log_err
+  */
+ PHPAPI void php_log_err(char *log_message TSRMLS_DC)
+diff --git a/main/php.h b/main/php.h
+index 278d639..e108c25 100644
+--- a/main/php.h
++++ b/main/php.h
+@@ -280,6 +280,7 @@ void phperror(char *error);
+ PHPAPI int php_write(void *buf, uint size TSRMLS_DC);
+ PHPAPI int php_printf(const char *format, ...) PHP_ATTRIBUTE_FORMAT(printf, 1,
+ 		2);
++PHPAPI int php_get_module_initialized(void);
+ PHPAPI void php_log_err(char *log_message TSRMLS_DC);
+ int Debug(char *format, ...) PHP_ATTRIBUTE_FORMAT(printf, 1, 2);
+ int cfgparse(void);
+-- 
+1.9.2
+

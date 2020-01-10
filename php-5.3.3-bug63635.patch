@@ -1,0 +1,103 @@
+From 92e2f2938115d2cdae185848d535380fb7694598 Mon Sep 17 00:00:00 2001
+From: Dmitry Stogov <dmitry@zend.com>
+Date: Thu, 29 Nov 2012 12:25:20 +0400
+Subject: [PATCH] Fixed bug #63635 (Segfault in gc_collect_cycles)
+
+---
+ NEWS                     |  1 +
+ Zend/tests/bug63635.phpt | 58 ++++++++++++++++++++++++++++++++++++++++++++++++
+ Zend/zend_gc.c           |  6 +++--
+ 3 files changed, 63 insertions(+), 2 deletions(-)
+ create mode 100644 Zend/tests/bug63635.phpt
+
+diff --git a/Zend/tests/bug63635.phpt b/Zend/tests/bug63635.phpt
+new file mode 100644
+index 0000000..6f6fc6a
+--- /dev/null
++++ b/Zend/tests/bug63635.phpt
+@@ -0,0 +1,58 @@
++--TEST--
++Bug #63635 (Segfault in gc_collect_cycles)
++--FILE--
++<?php
++class Node {
++	public $parent = NULL;
++	public $childs = array();
++	
++	function __construct(Node $parent=NULL) {
++		if ($parent) {
++			$parent->childs[] = $this;
++		}
++		$this->childs[] = $this;
++	}
++	
++	function __destruct() {
++		$this->childs = NULL;
++	}	
++}
++
++define("MAX", 16);
++
++for ($n = 0; $n < 20; $n++) {
++	$top = new Node();
++	for ($i=0 ; $i<MAX ; $i++) {
++		$ci = new Node($top);
++		for ($j=0 ; $j<MAX ; $j++) {
++			$cj = new Node($ci);
++			for ($k=0 ; $k<MAX ; $k++) {
++				$ck = new Node($cj);
++			}
++		}
++	}
++	echo "$n\n";
++}
++echo "ok\n";
++--EXPECT--
++0
++1
++2
++3
++4
++5
++6
++7
++8
++9
++10
++11
++12
++13
++14
++15
++16
++17
++18
++19
++ok
+diff --git a/Zend/zend_gc.c b/Zend/zend_gc.c
+index 07031f0..2b27de8 100644
+--- a/Zend/zend_gc.c
++++ b/Zend/zend_gc.c
+@@ -553,7 +553,8 @@ tail_call:
+ 			struct _store_object *obj = &EG(objects_store).object_buckets[Z_OBJ_HANDLE_P(pz)].bucket.obj;
+ 
+ 			if (obj->buffered == (gc_root_buffer*)GC_WHITE) {
+-				GC_SET_BLACK(obj->buffered);
++				/* PURPLE instead of BLACK to prevent buffering in nested gc calls */
++				GC_SET_PURPLE(obj->buffered);
+ 
+ 				if (EXPECTED(EG(objects_store).object_buckets[Z_OBJ_HANDLE_P(pz)].valid &&
+ 				             Z_OBJ_HANDLER_P(pz, get_properties) != NULL)) {
+@@ -598,7 +599,8 @@ static void zobj_collect_white(zval *pz TSRMLS_DC)
+ 		struct _store_object *obj = &EG(objects_store).object_buckets[Z_OBJ_HANDLE_P(pz)].bucket.obj;
+ 
+ 		if (obj->buffered == (gc_root_buffer*)GC_WHITE) {
+-			GC_SET_BLACK(obj->buffered);
++			/* PURPLE instead of BLACK to prevent buffering in nested gc calls */
++			GC_SET_PURPLE(obj->buffered);
+ 
+ 			if (EXPECTED(EG(objects_store).object_buckets[Z_OBJ_HANDLE_P(pz)].valid &&
+ 			             Z_OBJ_HANDLER_P(pz, get_properties) != NULL)) {
+-- 
+2.1.4
+

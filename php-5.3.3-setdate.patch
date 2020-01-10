@@ -1,0 +1,29 @@
+https://bugzilla.redhat.com/812819
+https://bugs.php.net/52290
+	setDate, setISODate, setTime works wrong when DateTime created from timestamp
+
+http://svn.php.net/viewvc?view=revision&revision=302890
+http://svn.php.net/viewvc?view=revision&revision=307853
+
+diff -up php-5.3.3/ext/date/lib/tm2unixtime.c.orig php-5.3.3/ext/date/lib/tm2unixtime.c
+--- php-5.3.3/ext/date/lib/tm2unixtime.c.orig	2012-10-04 17:36:43.132279043 +0200
++++ php-5.3.3/ext/date/lib/tm2unixtime.c	2012-10-04 17:37:04.205283971 +0200
+@@ -444,6 +444,7 @@ void timelib_update_ts(timelib_time* tim
+ 	time->sse = res;
+ 
+ 	time->sse_uptodate = 1;
++	time->have_relative = time->relative.have_weekday_relative = time->relative.have_special_relative = 0;
+ }
+ 
+ #if 0
+diff -up php-5.3.3/ext/date/php_date.c.orig php-5.3.3/ext/date/php_date.c
+--- php-5.3.3/ext/date/php_date.c.orig	2012-10-04 17:01:59.600706244 +0200
++++ php-5.3.3/ext/date/php_date.c	2012-10-04 19:51:08.545207379 +0200
+@@ -3061,6 +3061,7 @@ PHP_FUNCTION(date_isodate_set)
+ 	dateobj->time->y = y;
+ 	dateobj->time->m = 1;
+ 	dateobj->time->d = 1;
++	memset(&dateobj->time->relative, 0, sizeof(dateobj->time->relative));
+ 	dateobj->time->relative.d = timelib_daynr_from_weeknr(y, w, d);
+ 	dateobj->time->have_relative = 1;
+ 	

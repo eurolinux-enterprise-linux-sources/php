@@ -1,0 +1,126 @@
+From 0ea2ef125b88fc996e2405221ea98112e3abdcd5 Mon Sep 17 00:00:00 2001
+From: Dmitry Stogov <dmitry@php.net>
+Date: Tue, 2 Aug 2011 07:38:23 +0000
+Subject: [PATCH] Fixed bug #55339 (Segfault with
+ allow_call_time_pass_reference = Off)
+
+---
+ NEWS                     |  2 ++
+ Zend/tests/bug55339.phpt | 31 +++++++++++++++++++++++++++++++
+ Zend/zend.c              | 41 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 74 insertions(+)
+ create mode 100644 Zend/tests/bug55339.phpt
+
+diff --git a/Zend/tests/bug55339.phpt b/Zend/tests/bug55339.phpt
+new file mode 100644
+index 0000000..7d5ab4a
+--- /dev/null
++++ b/Zend/tests/bug55339.phpt
+@@ -0,0 +1,31 @@
++--TEST--
++Bug #55339 (Segfault with allow_call_time_pass_reference = Off)
++--INI--
++allow_call_time_pass_reference=off
++--FILE--
++<?php
++function error_handler($errno, $errstr, $errfile, $errline) {
++	eval(';');
++}
++
++set_error_handler('error_handler');
++
++eval(<<<'EOF'
++function foo()
++{
++    $array = array();
++    foreach ($array as $key => $value) {
++        bar($key, &$value);
++    }
++}
++
++function bar()
++{
++
++}
++EOF
++);
++
++echo "OK\n";
++--EXPECT--
++OK
+diff --git a/Zend/zend.c b/Zend/zend.c
+index 6861f61..bcfedeb 100644
+--- a/Zend/zend.c
++++ b/Zend/zend.c
+@@ -958,6 +958,23 @@ ZEND_API int zend_get_configuration_directive(const char *name, uint name_length
+ }
+ /* }}} */
+ 
++#define SAVE_STACK(stack) do { \
++		if (CG(stack).top) { \
++			memcpy(&stack, &CG(stack), sizeof(zend_stack)); \
++			CG(stack).top = CG(stack).max = 0; \
++			CG(stack).elements = NULL; \
++		} else { \
++			stack.top = 0; \
++		} \
++	} while (0)
++
++#define RESTORE_STACK(stack) do { \
++		if (stack.top) { \
++			zend_stack_destroy(&CG(stack)); \
++			memcpy(&CG(stack), &stack, sizeof(zend_stack)); \
++		} \
++	} while (0)
++
+ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
+ {
+ 	va_list args;
+@@ -970,6 +987,14 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
+ 	zval *orig_user_error_handler;
+ 	zend_bool in_compilation;
+ 	zend_class_entry *saved_class_entry;
++	zend_stack bp_stack;
++	zend_stack function_call_stack;
++	zend_stack switch_cond_stack;
++	zend_stack foreach_copy_stack;
++	zend_stack object_stack;
++	zend_stack declare_stack;
++	zend_stack list_stack;
++	zend_stack labels_stack;
+ 	TSRMLS_FETCH();
+ 
+ 	/* Obtain relevant filename and lineno */
+@@ -1097,6 +1122,14 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
+ 			if (in_compilation) {
+ 				saved_class_entry = CG(active_class_entry);
+ 				CG(active_class_entry) = NULL;
++				SAVE_STACK(bp_stack);
++				SAVE_STACK(function_call_stack);
++				SAVE_STACK(switch_cond_stack);
++				SAVE_STACK(foreach_copy_stack);
++				SAVE_STACK(object_stack);
++				SAVE_STACK(declare_stack);
++				SAVE_STACK(list_stack);
++				SAVE_STACK(labels_stack);
+ 			}
+ 
+ 			if (call_user_function_ex(CG(function_table), NULL, orig_user_error_handler, &retval, 5, params, 1, NULL TSRMLS_CC) == SUCCESS) {
+@@ -1113,6 +1146,14 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
+ 
+ 			if (in_compilation) {
+ 				CG(active_class_entry) = saved_class_entry;
++				RESTORE_STACK(bp_stack);
++				RESTORE_STACK(function_call_stack);
++				RESTORE_STACK(switch_cond_stack);
++				RESTORE_STACK(foreach_copy_stack);
++				RESTORE_STACK(object_stack);
++				RESTORE_STACK(declare_stack);
++				RESTORE_STACK(list_stack);
++				RESTORE_STACK(labels_stack);
+ 			}
+ 
+ 			if (!EG(user_error_handler)) {
+-- 
+1.7.11.5
+

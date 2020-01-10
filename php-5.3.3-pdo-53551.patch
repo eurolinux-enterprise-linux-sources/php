@@ -1,0 +1,109 @@
+From 22b42afaee7fc18019696faaa0bf6146f5fbea65 Mon Sep 17 00:00:00 2001
+From: =?utf8?q?Johannes=20Schl=C3=BCter?= <johannes@php.net>
+Date: Fri, 14 Jan 2011 14:57:57 +0000
+Subject: [PATCH] - Fix #53551 (PDOStatement execute segfaults for pdo_mysql
+ driver)
+
+---
+ NEWS                              |    4 ++
+ ext/pdo_mysql/mysql_statement.c   |    3 +-
+ ext/pdo_mysql/tests/bug53551.phpt |   73 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 78 insertions(+), 2 deletions(-)
+ create mode 100644 ext/pdo_mysql/tests/bug53551.phpt
+
+diff --git a/ext/pdo_mysql/mysql_statement.c b/ext/pdo_mysql/mysql_statement.c
+index a431598..79694b3 100755
+--- a/ext/pdo_mysql/mysql_statement.c
++++ b/ext/pdo_mysql/mysql_statement.c
+@@ -142,8 +142,7 @@ static int pdo_mysql_stmt_execute_prepared_libmysql(pdo_stmt_t *stmt TSRMLS_DC)
+ 	/* (re)bind the parameters */
+ 	if (mysql_stmt_bind_param(S->stmt, S->params) || mysql_stmt_execute(S->stmt)) {
+ 		if (S->params) {
+-			efree(S->params);
+-			S->params = 0;
++			memset(S->params, 0, S->num_params * sizeof(MYSQL_BIND));
+ 		}
+ 		pdo_mysql_error_stmt(stmt);
+ 		if (mysql_stmt_errno(S->stmt) == 2057) {
+diff --git a/ext/pdo_mysql/tests/bug53551.phpt b/ext/pdo_mysql/tests/bug53551.phpt
+new file mode 100644
+index 0000000..865dcea
+--- /dev/null
++++ b/ext/pdo_mysql/tests/bug53551.phpt
+@@ -0,0 +1,73 @@
++--TEST--
++Bug #44327 (PDORow::queryString property & numeric offsets / Crash)
++--SKIPIF--
++<?php
++require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'skipif.inc');
++require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'mysql_pdo_test.inc');
++MySQLPDOTest::skip();
++$db = MySQLPDOTest::factory();
++?>
++--FILE--
++<?php
++include __DIR__ . DIRECTORY_SEPARATOR . 'mysql_pdo_test.inc';
++$db = MySQLPDOTest::factory();
++
++$db->setAttribute(PDO::ATTR_EMULATE_PREPARES, 0);
++
++$createSql = "CREATE TABLE `bug53551` (
++  `count` bigint(20) unsigned NOT NULL DEFAULT '0'
++)";
++
++$db->exec('drop table if exists bug53551');
++$db->exec($createSql);
++$db->exec("insert into bug53551 set `count` = 1 ");
++$db->exec("SET sql_mode = 'Traditional'");
++$sql = 'UPDATE bug53551 SET `count` = :count';
++$stmt = $db->prepare($sql);
++
++$values = array (
++    'count' => NULL,
++);
++
++echo "1\n";
++$stmt->execute($values);
++var_dump($stmt->errorInfo());
++
++echo "2\n";
++$stmt->execute($values);
++var_dump($stmt->errorInfo());
++
++echo "\ndone\n";
++
++?>
++--CLEAN--
++<?php
++include __DIR__ . DIRECTORY_SEPARATOR . 'mysql_pdo_test.inc';
++$db = MySQLPDOTest::factory();
++$db->exec('DROP TABLE IF EXISTS bug53551');
++?>
++--EXPECTF--
++1
++
++Warning: PDOStatement::execute(): SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'count' cannot be null in %s on line %d
++array(3) {
++  [0]=>
++  string(5) "23000"
++  [1]=>
++  int(1048)
++  [2]=>
++  string(29) "Column 'count' cannot be null"
++}
++2
++
++Warning: PDOStatement::execute(): SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'count' cannot be null in %s on line %d
++array(3) {
++  [0]=>
++  string(5) "23000"
++  [1]=>
++  int(1048)
++  [2]=>
++  string(29) "Column 'count' cannot be null"
++}
++
++done
+-- 
+1.7.8
+

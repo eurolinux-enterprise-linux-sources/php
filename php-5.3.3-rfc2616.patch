@@ -1,0 +1,32 @@
+From 1b60eb8813d9c5bc3a5e742a5242d93901315492 Mon Sep 17 00:00:00 2001
+From: Dmitry Stogov <dmitry@php.net>
+Date: Tue, 5 Oct 2010 11:43:59 +0000
+Subject: [PATCH] Fixed bug #44248 (RFC2616 transgression while HTTPS request
+ through proxy with SoapClient object).
+
+---
+ NEWS                | 2 ++
+ ext/soap/php_http.c | 7 +++++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/ext/soap/php_http.c b/ext/soap/php_http.c
+index d7dc4de..9bde91c 100644
+--- a/ext/soap/php_http.c
++++ b/ext/soap/php_http.c
+@@ -137,6 +137,13 @@ static php_stream* http_connect(zval* this_ptr, php_url *phpurl, int use_ssl, ph
+ 		smart_str_appendc(&soap_headers, ':');
+ 		smart_str_append_unsigned(&soap_headers, phpurl->port);
+ 		smart_str_append_const(&soap_headers, " HTTP/1.1\r\n");
++		smart_str_append_const(&soap_headers, "Host: ");
++		smart_str_appends(&soap_headers, phpurl->host);
++		if (phpurl->port != 80) {
++			smart_str_appendc(&soap_headers, ':');
++			smart_str_append_unsigned(&soap_headers, phpurl->port);
++		}
++		smart_str_append_const(&soap_headers, "\r\n");
+ 		proxy_authentication(this_ptr, &soap_headers TSRMLS_CC);
+ 		smart_str_append_const(&soap_headers, "\r\n");
+ 		if (php_stream_write(stream, soap_headers.c, soap_headers.len) != soap_headers.len) {
+-- 
+1.9.2
+

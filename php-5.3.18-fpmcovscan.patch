@@ -1,0 +1,88 @@
+From f08060a48fadf079e860be73584ac87747dc59d6 Mon Sep 17 00:00:00 2001
+From: Remi Collet <remi@php.net>
+Date: Wed, 28 Nov 2012 10:28:18 +0100
+Subject: [PATCH] Fixed Bug #63581 Possible null dereference
+
+Possible NULL dereference when trying to delete the single item
+of a list (ack from fat).
+
+This issues where found from by static code analysis tool and,
+so, I can't provide any reproducer.
+---
+ sapi/fpm/fpm/fpm_events.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/sapi/fpm/fpm/fpm_events.c b/sapi/fpm/fpm/fpm_events.c
+index d5f7483..d5835f0 100644
+--- a/sapi/fpm/fpm/fpm_events.c
++++ b/sapi/fpm/fpm/fpm_events.c
+@@ -188,7 +188,9 @@ static int fpm_event_queue_del(struct fpm_event_queue_s **queue, struct fpm_even
+ 			}
+ 			if (q == *queue) {
+ 				*queue = q->next;
+-				(*queue)->prev = NULL;
++				if (*queue) {
++					(*queue)->prev = NULL;
++				}
+ 			}
+ 
+ 			/* ask the event module to remove the fd from its own queue */
+@@ -432,7 +434,9 @@ void fpm_event_loop(int err) /* {{{ */
+ 						}
+ 						if (q == fpm_event_queue_timer) {
+ 							fpm_event_queue_timer = q->next;
+-							fpm_event_queue_timer->prev = NULL;
++							if (fpm_event_queue_timer) {
++								fpm_event_queue_timer->prev = NULL;
++							}
+ 						}
+ 						q = q->next;
+ 						free(q2);
+-- 
+1.7.11.5
+
+From bc492007da8c8614545a32560c445ab4e02baed0 Mon Sep 17 00:00:00 2001
+From: Remi Collet <remi@php.net>
+Date: Wed, 28 Nov 2012 10:35:04 +0100
+Subject: [PATCH] Fixed Bug #63581 Possible buffer overflow
+
+In fpm-log, possible buffer overflow. Check for length is done at
+the beginning of the loop, so is not done when overflow occurs
+on the last loop (len = 1024 or 1025). (ack from fat).
+
+This issue where found from by static code analysis tool and, so,
+I can't provide any reproducer.
+---
+ NEWS                   | 3 +++
+ sapi/fpm/fpm/fpm_log.c | 7 ++++---
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/sapi/fpm/fpm/fpm_log.c b/sapi/fpm/fpm/fpm_log.c
+index 69bd31b..6b014b5 100644
+--- a/sapi/fpm/fpm/fpm_log.c
++++ b/sapi/fpm/fpm/fpm_log.c
+@@ -96,7 +96,7 @@ int fpm_log_init_child(struct fpm_worker_pool_s *wp)  /* {{{ */
+ int fpm_log_write(char *log_format TSRMLS_DC) /* {{{ */
+ {
+ 	char *s, *b;
+-	char buffer[FPM_LOG_BUFFER];
++	char buffer[FPM_LOG_BUFFER+1];
+ 	int token, test;
+ 	size_t len, len2;
+ 	struct fpm_scoreboard_proc_s proc, *proc_p;
+@@ -146,9 +146,10 @@ int fpm_log_write(char *log_format TSRMLS_DC) /* {{{ */
+ 	s = log_format;
+ 
+ 	while (*s != '\0') {
+-		if (len > FPM_LOG_BUFFER) {
++		/* Test is we have place for 1 more char. */
++		if (len >= FPM_LOG_BUFFER) {
+ 			zlog(ZLOG_NOTICE, "the log buffer is full (%d). The access log request has been truncated.", FPM_LOG_BUFFER);
+-			len = FPM_LOG_BUFFER - 1;
++			len = FPM_LOG_BUFFER;
+ 			break;
+ 		}
+ 
+-- 
+1.7.11.5
+

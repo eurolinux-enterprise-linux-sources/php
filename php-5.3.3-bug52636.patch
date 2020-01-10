@@ -1,0 +1,27 @@
+From 20f4bdc399ce1645131c5b3e40de2ed49efc8dc8 Mon Sep 17 00:00:00 2001
+From: Kalle Sommer Nielsen <kalle@php.net>
+Date: Wed, 18 Aug 2010 20:00:18 +0000
+Subject: [PATCH] Fixed bug #52636 (php_mysql_fetch_hash writes long value into
+ int)
+
+# Tested by rein at basefarm dot no
+---
+ ext/mysql/php_mysql.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ext/mysql/php_mysql.c b/ext/mysql/php_mysql.c
+index 6fd51f2..ab6c2bb 100644
+--- a/ext/mysql/php_mysql.c
++++ b/ext/mysql/php_mysql.c
+@@ -2008,7 +2008,7 @@ PHP_FUNCTION(mysql_num_fields)
+ 
+ /* {{{ php_mysql_fetch_hash
+  */
+-static void php_mysql_fetch_hash(INTERNAL_FUNCTION_PARAMETERS, int result_type, int expected_args, int into_object)
++static void php_mysql_fetch_hash(INTERNAL_FUNCTION_PARAMETERS, long result_type, int expected_args, int into_object)
+ {
+ 	MYSQL_RES *mysql_result;
+ 	zval            *res, *ctor_params = NULL;
+-- 
+1.9.2
+

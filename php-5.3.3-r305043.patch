@@ -1,0 +1,106 @@
+
+http://svn.php.net/viewvc?view=revision&revision=305043
+
+--- php-5.3.3/Zend/tests/bug45180.phpt.r305043
++++ php-5.3.3/Zend/tests/bug45180.phpt
+@@ -43,11 +43,11 @@ __call:
+ string(3) "ABC"
+ __call:
+ string(3) "ABC"
+-__callstatic:
++__call:
+ string(3) "XYZ"
+-__callstatic:
++__call:
+ string(3) "WWW"
+-__callstatic:
++__call:
+ string(3) "ABC"
+ __callstatic:
+ string(1) "A"
+@@ -58,4 +58,4 @@ string(1) "C"
+ __callstatic:
+ string(3) "FOO"
+ __callstatic:
+-string(3) "FOO"
++string(3) "FOO"
+\ No newline at end of file
+--- php-5.3.3/Zend/tests/bug45186.phpt.r305043
++++ php-5.3.3/Zend/tests/bug45186.phpt
+@@ -35,17 +35,17 @@ call_user_func('self::y');
+ 
+ ?>
+ --EXPECTF--
+-__callstatic:
++__call:
+ string(3) "ABC"
+-__callstatic:
++__call:
+ string(3) "ABC"
+ __call:
+ string(3) "xyz"
+-__callstatic:
++__call:
+ string(3) "www"
+ __call:
+ string(1) "y"
+-__callstatic:
++__call:
+ string(1) "y"
+ ok
+ __callstatic:
+--- php-5.3.3/Zend/tests/bug51176.phpt.r305043
++++ php-5.3.3/Zend/tests/bug51176.phpt
+@@ -27,6 +27,6 @@ $foo->start();
+ 
+ ?>
+ --EXPECT--
+-static
+-static
+-static
++instance
++instance
++instance
+\ No newline at end of file
+--- php-5.3.3/Zend/tests/call_static_003.phpt.r305043
++++ php-5.3.3/Zend/tests/call_static_003.phpt
+@@ -28,9 +28,9 @@ foo::BAZ();
+ --EXPECT--
+ nonstatic
+ string(6) "fOoBaR"
+-static
++nonstatic
+ string(6) "foOBAr"
+-static
++nonstatic
+ string(6) "fOOBAr"
+ static
+ string(3) "bAr"
+--- php-5.3.3/Zend/tests/call_static_007.phpt.r305043
++++ php-5.3.3/Zend/tests/call_static_007.phpt
+@@ -30,5 +30,5 @@ a::Foo();
+ --EXPECT--
+ __callstatic: Test
+ __call: Test
+-__callstatic: Bar
++__call: Bar
+ __callstatic: Foo
+--- php-5.3.3/Zend/zend_object_handlers.c.r305043
++++ php-5.3.3/Zend/zend_object_handlers.c
+@@ -953,13 +953,13 @@ ZEND_API zend_function *zend_std_get_sta
+ 	if (!fbc && zend_hash_find(&ce->function_table, lc_function_name, function_name_strlen+1, (void **) &fbc)==FAILURE) {
+ 		efree(lc_function_name);
+ 
+-		if (ce->__callstatic) {
+-			return zend_get_user_callstatic_function(ce, function_name_strval, function_name_strlen);
+-		} else if (ce->__call &&
++		if (ce->__call &&
+ 		    EG(This) &&
+ 		    Z_OBJ_HT_P(EG(This))->get_class_entry &&
+ 		    instanceof_function(Z_OBJCE_P(EG(This)), ce TSRMLS_CC)) {
+ 			return zend_get_user_call_function(ce, function_name_strval, function_name_strlen);
++		} else if (ce->__callstatic) {
++			return zend_get_user_callstatic_function(ce, function_name_strval, function_name_strlen);
+ 		} else {
+ 	   		return NULL;
+ 		}
