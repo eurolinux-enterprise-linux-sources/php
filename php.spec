@@ -18,7 +18,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: php
 Version: 5.3.3
-Release: 49%{?dist}
+Release: 50%{?dist}
 License: PHP
 Group: Development/Languages
 URL: http://www.php.net/
@@ -160,6 +160,7 @@ Patch270: php-5.3.3-bug69353.patch
 Patch271: php-5.3.3-bug69152.patch
 Patch272: php-5.3.3-CVE-2015-4644.patch
 Patch273: php-5.3.3-CVE-2016-5385.patch
+Patch274: php-5.3.3-CVE-2019-11043.patch
 
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -630,6 +631,7 @@ support for using the enchant library to PHP.
 %patch271 -p1 -b .bug69152
 %patch272 -p1 -b .cve4644
 %patch273 -p1 -b .cve5385
+%patch274 -p1 -b .cve11043
 
 # Prevent %%doc confusion over LICENSE files
 cp Zend/LICENSE Zend/ZEND_LICENSE
@@ -1117,6 +1119,9 @@ fi
 
 
 %changelog
+* Tue Oct 29 2019 Remi Collet <rcollet@redhat.com> - 5.3.3-50
+- fix underflow in env_path_info in fpm_main.c CVE-2019-11043
+
 * Mon Nov  7 2016 Remi Collet <rcollet@redhat.com> - 5.3.3-49
 - fix php-soap fails to connect to HTTPS web service sporadically
   as stream_socket_enable_crypto() uses NONBLOCK #1283153
