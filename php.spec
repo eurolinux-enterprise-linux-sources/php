@@ -18,7 +18,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: php
 Version: 5.3.3
-Release: 46%{?dist}.1
+Release: 47%{?dist}
 License: PHP
 Group: Development/Languages
 URL: http://www.php.net/
@@ -79,6 +79,9 @@ Patch111: php-5.3.3-bug52636.patch
 Patch112: php-5.3.3-rfc2616.patch
 Patch113: php-5.3.3-r305043.patch
 Patch114: php-5.3.3-bug53141.patch
+Patch115: php-5.3.3-openssl.patch
+Patch116: php-5.3.3-bug54609.patch
+Patch117: php-5.3.3-curltls.patch
 Patch118: php-5.3.3-bug63635.patch
 
 # Fixes for security bugs
@@ -154,6 +157,7 @@ Patch268: php-5.3.3-CVE-2015-4024.patch
 Patch269: php-5.3.3-CVE-2015-4026.patch
 Patch270: php-5.3.3-bug69353.patch
 Patch271: php-5.3.3-bug69152.patch
+Patch272: php-5.3.3-CVE-2015-4644.patch
 
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -540,6 +544,9 @@ support for using the enchant library to PHP.
 %patch112 -p1 -b .rfc2616
 %patch113 -p1 -b .r305043
 %patch114 -p1 -b .bug53141
+%patch115 -p1 -b .ivlength
+%patch116 -p1 -b .bug54609
+%patch117 -p1 -b .curltls
 %patch118 -p1 -b .bug63635
 
 %patch200 -p1 -b .cve3709
@@ -618,6 +625,7 @@ support for using the enchant library to PHP.
 %patch269 -p1 -b .cve4026
 %patch270 -p1 -b .bug69353
 %patch271 -p1 -b .bug69152
+%patch272 -p1 -b .cve4644
 
 # Prevent %%doc confusion over LICENSE files
 cp Zend/LICENSE Zend/ZEND_LICENSE
@@ -1105,8 +1113,14 @@ fi
 
 
 %changelog
-* Tue Jan  5 2016 Remi Collet <rcollet@redhat.com> - 5.3.3-46.1
-- fix segfault in gc_collect_cycles #1293568
+* Wed Dec  9 2015 Remi Collet <rcollet@redhat.com> - 5.3.3-47
+- fix wrong warning in openssl_encrypt() for missing IV
+  when IV is not required #1260315
+- fix segfault's when you try and allocate an SplFixedArray
+  with size >= 9999 #1071344
+- segfault in php_pgsql_meta_data CVE-2015-4644  #1234434
+- add options to enable TLS in curl #1255920
+- fix segfault in gc_collect_cycles #1122681
 
 * Fri Jul  3 2015 Remi Collet <rcollet@redhat.com> - 5.3.3-46
 - fix gzfile accept paths with NUL character #1213407

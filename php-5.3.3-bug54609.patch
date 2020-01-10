@@ -1,0 +1,17 @@
+From upstream patches:
+
+bug #50481 http://git.php.net/?p=php-src.git;a=commit;h=904b9282fee046c5d224ef096540d0d817afcd38
+bug #54609 http://git.php.net/?p=php-src.git;a=commit;h=0afd4bd18bef55d8bce4d0fe854a65781477029a
+
+diff -up ext/spl/spl_fixedarray.c.bug54609 ext/spl/spl_fixedarray.c
+--- a/ext/spl/spl_fixedarray.c.bug54609	2014-03-25 15:00:50.914379628 +0100
++++ b/ext/spl/spl_fixedarray.c	2014-03-25 15:02:05.267403292 +0100
+@@ -152,7 +152,7 @@ static HashTable* spl_fixedarray_object_
+ 	spl_fixedarray_object *intern  = (spl_fixedarray_object*)zend_object_store_get_object(obj TSRMLS_CC);
+ 	int  i = 0;
+ 
+-	if (intern->array) {
++	if (intern->array && !GC_G(gc_active)) {
+ 		for (i = 0; i < intern->array->size; i++) {
+ 			if (intern->array->elements[i]) {
+ 				zend_hash_index_update(intern->std.properties, i, (void *)&intern->array->elements[i], sizeof(zval *), NULL);
