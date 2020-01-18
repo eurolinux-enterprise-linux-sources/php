@@ -69,7 +69,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: php
 Version: 5.4.16
-Release: 43%{?dist}
+Release: 45%{?dist}
 # All files licensed under PHP version 3.01, except
 # Zend is licensed under Zend
 # TSRM is licensed under BSD
@@ -145,6 +145,10 @@ Patch47: php-5.4.9-phpinfo.patch
 # Fix php_select on aarch64 (http://bugs.php.net/67406)
 Patch48: php-5.4.16-aarch64-select.patch
 Patch49: php-5.4.16-curltls.patch
+# add clear_env option to FPM config
+Patch50: php-5.4.16-fpmclearenv.patch
+# fix default_socket_timeout does not work with SSL
+Patch51: php-5.4.16-openssl-timeout.patch
 
 # Fixes for tests
 Patch60: php-5.4.16-pdotests.patch
@@ -206,6 +210,7 @@ Patch158: php-5.4.16-CVE-2016-5768.patch
 Patch159: php-5.4.16-CVE-2016-5399.patch
 Patch160: php-5.4.16-CVE-2016-10167.patch
 Patch161: php-5.4.16-CVE-2016-10168.patch
+Patch162: php-5.4.16-CVE-2017-7890.patch
 
 
 BuildRequires: bzip2-devel, curl-devel >= 7.9, gmp-devel
@@ -226,6 +231,8 @@ Obsoletes: php-zts < 5.3.7
 Provides: php-zts = %{version}-%{release}
 Provides: php-zts%{?_isa} = %{version}-%{release}
 %endif
+# php engine for webserver working out of the box
+Provides: php(httpd)
 
 Requires: httpd-mmn = %{_httpd_mmn}
 Provides: mod_php = %{version}-%{release}
@@ -531,6 +538,8 @@ Group: Development/Languages
 License: PHP
 Requires: php-common%{?_isa} = %{version}-%{release}, net-snmp
 BuildRequires: net-snmp-devel
+# Workaround, see https://bugzilla.redhat.com/1486733
+BuildRequires: net-snmp
 
 %description snmp
 The php-snmp package contains a dynamic shared object that will add
@@ -722,6 +731,8 @@ support for using the enchant library to PHP.
 %patch47 -p1 -b .phpinfo
 %patch48 -p1 -b .aarch64select
 %patch49 -p1 -b .curltls
+%patch50 -p1 -b .clearenv
+%patch51 -p1 -b .ssl_timeout
 
 %patch60 -p1 -b .pdotests
 
@@ -781,6 +792,7 @@ support for using the enchant library to PHP.
 %patch159 -p1 -b .cve5399
 %patch160 -p1 -b .cve10167
 %patch161 -p1 -b .cve10168
+%patch162 -p1 -b .cve7890
 
 
 # Prevent %%doc confusion over LICENSE files
@@ -1552,6 +1564,15 @@ fi
 
 
 %changelog
+* Tue Jan 23 2018 Remi Collet <rcollet@redhat.com> - 5.4.16-45
+- gd: fix buffer over-read into uninitialized memory CVE-2017-7890
+
+* Thu Oct 12 2017 Remi Collet <rcollet@redhat.com> - 5.4.16-44
+- fix php should provide php(httpd) #1215429
+- fpm: backport PHP-FPM's clear_env option from 5.4.27 #1410010
+  default value is "yes", preserving previous behaviour
+- openssl: fix default_socket_timeout does not work with SSL #1378196
+
 * Wed Oct  4 2017 Remi Collet <rcollet@redhat.com> - 5.4.16-43
 - gd: fix DoS vulnerability in gdImageCreateFromGd2Ctx() CVE-2016-10167
 - gd: Signed Integer Overflow gd_io.c CVE-2016-10168
