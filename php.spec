@@ -69,7 +69,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: php
 Version: 5.4.16
-Release: 45%{?dist}
+Release: 46.1%{?dist}
 # All files licensed under PHP version 3.01, except
 # Zend is licensed under Zend
 # TSRM is licensed under BSD
@@ -149,6 +149,8 @@ Patch49: php-5.4.16-curltls.patch
 Patch50: php-5.4.16-fpmclearenv.patch
 # fix default_socket_timeout does not work with SSL
 Patch51: php-5.4.16-openssl-timeout.patch
+# load openssl configuration file
+Patch52: php-5.4.16-openssl-config.patch
 
 # Fixes for tests
 Patch60: php-5.4.16-pdotests.patch
@@ -211,6 +213,7 @@ Patch159: php-5.4.16-CVE-2016-5399.patch
 Patch160: php-5.4.16-CVE-2016-10167.patch
 Patch161: php-5.4.16-CVE-2016-10168.patch
 Patch162: php-5.4.16-CVE-2017-7890.patch
+Patch167: php-5.4.16-CVE-2019-11043.patch
 
 
 BuildRequires: bzip2-devel, curl-devel >= 7.9, gmp-devel
@@ -733,6 +736,7 @@ support for using the enchant library to PHP.
 %patch49 -p1 -b .curltls
 %patch50 -p1 -b .clearenv
 %patch51 -p1 -b .ssl_timeout
+%patch52 -p1 -b .config
 
 %patch60 -p1 -b .pdotests
 
@@ -793,6 +797,7 @@ support for using the enchant library to PHP.
 %patch160 -p1 -b .cve10167
 %patch161 -p1 -b .cve10168
 %patch162 -p1 -b .cve7890
+%patch167 -p1 -b .cve11043
 
 
 # Prevent %%doc confusion over LICENSE files
@@ -1564,6 +1569,12 @@ fi
 
 
 %changelog
+* Tue Oct 29 2019 Remi Collet <rcollet@redhat.com> - 5.4.16-46.1
+- fix underflow in env_path_info in fpm_main.c CVE-2019-11043
+
+* Tue Jun 19 2018 Remi Collet <rcollet@redhat.com> - 5.4.16-46
+- load openssl configuration file on startup #1408301
+
 * Tue Jan 23 2018 Remi Collet <rcollet@redhat.com> - 5.4.16-45
 - gd: fix buffer over-read into uninitialized memory CVE-2017-7890
 
