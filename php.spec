@@ -69,7 +69,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: php
 Version: 5.4.16
-Release: 43%{?dist}.1
+Release: 43%{?dist}
 # All files licensed under PHP version 3.01, except
 # Zend is licensed under Zend
 # TSRM is licensed under BSD
@@ -206,7 +206,6 @@ Patch158: php-5.4.16-CVE-2016-5768.patch
 Patch159: php-5.4.16-CVE-2016-5399.patch
 Patch160: php-5.4.16-CVE-2016-10167.patch
 Patch161: php-5.4.16-CVE-2016-10168.patch
-Patch162: php-5.4.16-CVE-2017-7890.patch
 
 
 BuildRequires: bzip2-devel, curl-devel >= 7.9, gmp-devel
@@ -782,7 +781,6 @@ support for using the enchant library to PHP.
 %patch159 -p1 -b .cve5399
 %patch160 -p1 -b .cve10167
 %patch161 -p1 -b .cve10168
-%patch162 -p1 -b .cve7890
 
 
 # Prevent %%doc confusion over LICENSE files
@@ -1554,9 +1552,6 @@ fi
 
 
 %changelog
-* Tue Jan 23 2018 Remi Collet <rcollet@redhat.com> - 5.4.16-43.1
-- gd: fix buffer over-read into uninitialized memory CVE-2017-7890
-
 * Wed Oct  4 2017 Remi Collet <rcollet@redhat.com> - 5.4.16-43
 - gd: fix DoS vulnerability in gdImageCreateFromGd2Ctx() CVE-2016-10167
 - gd: Signed Integer Overflow gd_io.c CVE-2016-10168
